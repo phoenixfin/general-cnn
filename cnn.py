@@ -3,7 +3,7 @@ import tensorflow as tf
 class BaseConvolutionalNetwork(object):
     hyperparam = {
         'batch_size'    : 20, 
-        'epoch'         : 15
+        'epoch'         : 15,
         'steps'         : 100,
         'val_steps'     : 50,
         'learning_rate' : 0.001            
@@ -15,18 +15,18 @@ class BaseConvolutionalNetwork(object):
         self.mode = mode
         self.data_dir = {'train': train_dir, 'validation': val_dir}
 
-    def summary(self):
+    def show_summary(self):
         self.model.summary()
 
     def add_convolution(self, filter_num, kernel_size, pooling=(2,2), activation='relu', first=True):
         kwargs = {'activation':activation}
-        for i, num in enumerate(conv_num):
+        for i, num in enumerate(filter_num):
             kwargs['filters'] = num
             kwargs['kernel_size'] = kernel_size[i]
             if first and i==0: kwargs['input_shape']=self.input_shape + (3,)
             self.model.add(tf.keras.layers.Conv2D(**kwargs))
             if pooling: 
-                self.models.add(tf.keras.layers.MaxPooling2D(*pooling))
+                self.model.add(tf.keras.layers.MaxPooling2D(*pooling))
 
     def flatten(self):
         self.model.add(tf.keras.layers.Flatten())
@@ -60,14 +60,14 @@ class BaseConvolutionalNetwork(object):
         )
         return train_gen, validation_gen
 
-    def train():
+    def train(self):
         p = self.hyperparam
-        train_generator, validation_generator = self.flow_from_directory
+        train_generator, validation_generator = self.flow_from_directory()
         opt = tf.keras.optimizers.RMSprop(lr=p['learning_rate'])
-        loss = 'binary_crossentropy' if mode='binary' else 'categorical_crossentropy'
+        loss = 'binary_crossentropy' if self.mode=='binary' else 'categorical_crossentropy'
         self.model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
         
-        history = model.fit(
+        history = self.model.fit(
             train_generator,
             validation_data = validation_generator,
             steps_per_epoch = p['steps'],
