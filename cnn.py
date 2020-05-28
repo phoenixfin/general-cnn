@@ -34,15 +34,54 @@ class BaseConvolutionalNetwork(object):
         'dtype'                           : None        
     }
     
-    def __init__(self, input_, train_dir, val_dir, mode='binary'):
-        self.model = tf.keras.models.Sequential()
+    def __init__(self, input_, load=False, mode='binary'):
+        if not load:
+            self.create_new()
+        else:
+            self.load(load)
         self.input_shape = input_
         self.mode = mode
-        self.data_dir = {'train': train_dir, 'validation': val_dir}
-
+            
     def show_summary(self):
         self.model.summary()
 
+    def load(self, filename, obj='model'):
+        if obj=='model':
+            self.model = tf.keras.models.load_model(filename)
+        elif obj=='weights_only':
+            self.model.load_weights(filename)
+
+    def load(self, filename, obj='model'):
+        if obj=='model':
+            self.model = tf.keras.models.load_model(filename)
+        elif obj=='weights_only':
+            self.model.load_weights(filename)
+        else:
+            print('Load failed. Unknown mode')
+
+    def save(self, filename, obj='model'):
+        path = 'saved\\'+filename
+        if obj=='model':
+            self.model.save(path)
+        elif obj=='weights_only':
+            self.model.save_weights(path+'\\'+variables)
+        else:
+            print('Load failed. Unknown mode')        
+
+    def reset_model(self, mode='metrics_only'):
+        if mode=='model':
+            self.create_new()
+        elif mode=='metrics_only':
+            self.model.reset_metrics()
+        else:
+            print('Load failed. Unknown mode')
+        
+    def create_new(self):
+        self.model = tf.keras.models.Sequential()        
+            
+    def set_data_dir(self, train_dir, val_dir):
+        self.data_dir = {'train': train_dir, 'validation': val_dir}        
+            
     def add_convolution(self, filter_num, kernels_size, 
                         pooling = (2,2), activation = 'relu', 
                         dropout = 0, first = True):
@@ -56,8 +95,6 @@ class BaseConvolutionalNetwork(object):
                 self.model.add(tf.keras.layers.MaxPooling2D(*pooling))
         if dropout:
             self.model.add(tf.keras.layers.Dropout(dropout))
-
-    def flatten(self):
         self.model.add(tf.keras.layers.Flatten())
         
     def set_hidden_layers(self, neurons_list, activation='relu'):
@@ -96,12 +133,23 @@ class BaseConvolutionalNetwork(object):
         )
         return train_gen, validation_gen
 
-    def train(self):
+    def train(self, checkpoint=None):
         p = self.hyperparam
         train_generator, validation_generator = self.flow_from_directory()
         opt = tf.keras.optimizers.RMSprop(lr=p['learning_rate'])
         loss = 'binary_crossentropy' if self.mode=='binary' else 'categorical_crossentropy'
+
         self.model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
+
+        if checkpoint:
+            checkpoint_path = "saved\\"+checkpoint
+            checkpoint_save = tf.keras.callbacks.ModelCheckpoint(
+                filepath = checkpoint_path,
+                verbose = 1
+            )
+            callbacks = [checkpoint_save]
+        else:
+            callbacks = None
         
         history = self.model.fit(
             train_generator,
@@ -109,5 +157,7 @@ class BaseConvolutionalNetwork(object):
             steps_per_epoch = p['steps'],
             epochs = p['epoch'],
             validation_steps = p['val_steps'],
-            verbose = 2
+            verbose = 2,
+            callbacks = callbacks
         )
+        return history
