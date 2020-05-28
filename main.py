@@ -14,24 +14,20 @@ basic_augmentation = {
     'horizontal_flip'     : True,
 }
 
-def cats_dogs_case():
+def cats_dogs_case(save=None):
     base_dir = here+ '\\data\\dogs-vs-cats\\tobeused'
-
     train_dir = os.path.join(base_dir, 'train')
     validation_dir = os.path.join(base_dir, 'validation')
-    input_size = (150,150)
+    input_shape = (150,150)
     
-    cnn = BaseConvolutionalNetwork(input_size, train_dir, validation_dir)
-
-    filters = [16,32,64]
-    kernel_size = (3,3)*3
-    cnn.add_convolution(filters, kernel_size)
+    cnn = BaseConvolutionalNetwork(input_shape)
+    cnn.set_data_dir(train_dir, validation_dir)
+    cnn.add_convolution([16,32,64], (3,3)*3)
     cnn.set_augmentations(basic_augmentation)
-    cnn.flatten()
     cnn.set_hidden_layers([512])
     cnn.set_output_layer(1)
     cnn.show_summary()
-
+    cnn.train(save)
 
 if __name__ == '__main__':
-    cats_dogs_case()
+    cats_dogs_case('catdog_model')
