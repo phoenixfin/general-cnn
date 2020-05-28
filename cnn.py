@@ -9,6 +9,31 @@ class BaseConvolutionalNetwork(object):
         'learning_rate' : 0.001            
     }
     
+    augmentation = {
+        'featurewise_center'              : False, 
+        'samplewise_center'               : False,
+        'featurewise_std_normalization'   : False, 
+        'samplewise_std_normalization'    : False,
+        'zca_whitening'                   : False, 
+        'zca_epsilon'                     : 1e-06, 
+        'rotation_range'                  : 0, 
+        'width_shift_range'               : 0.0,
+        'height_shift_range'              : 0.0, 
+        'brightness_range'                : None, 
+        'shear_range'                     : 0.0, 
+        'zoom_range'                      : 0.0,
+        'channel_shift_range'             : 0.0, 
+        'fill_mode'                       : 'nearest', 
+        'cval'                            : 0.0, 
+        'horizontal_flip'                 : False,
+        'vertical_flip'                   : False, 
+        'rescale'                         : None, 
+        'preprocessing_function'          : None,
+        'data_format'                     : None, 
+        'validation_split'                : 0.0, 
+        'dtype'                           : None        
+    }
+    
     def __init__(self, input_, train_dir, val_dir, mode='binary'):
         self.model = tf.keras.models.Sequential()
         self.input_shape = input_
@@ -18,15 +43,19 @@ class BaseConvolutionalNetwork(object):
     def show_summary(self):
         self.model.summary()
 
-    def add_convolution(self, filter_num, kernel_size, pooling=(2,2), activation='relu', first=True):
+    def add_convolution(self, filter_num, kernels_size, 
+                        pooling = (2,2), activation = 'relu', 
+                        dropout = 0, first = True):
         kwargs = {'activation':activation}
         for i, num in enumerate(filter_num):
             kwargs['filters'] = num
-            kwargs['kernel_size'] = kernel_size[i]
+            kwargs['kernel_size'] = kernels_size[i]
             if first and i==0: kwargs['input_shape']=self.input_shape + (3,)
             self.model.add(tf.keras.layers.Conv2D(**kwargs))
             if pooling: 
                 self.model.add(tf.keras.layers.MaxPooling2D(*pooling))
+        if dropout:
+            self.model.add(tf.keras.layers.Dropout(dropout))
 
     def flatten(self):
         self.model.add(tf.keras.layers.Flatten())
@@ -41,9 +70,16 @@ class BaseConvolutionalNetwork(object):
     def set_parameter(self, param, value):
         self.hyperparam[param] = value
 
+    def set_augmentation(self, param, value):
+        self.augmentation[param] = value
+        
+    def set_augmentations(self, aug_dict):
+        for key in aug_dict:
+            self.set_augmentation(key, aug_dict[key])
+
     def flow_from_directory(self):
         IMG = tf.keras.preprocessing.image.ImageDataGenerator
-        tg = IMG(rescale = 1.0/255.)
+        tg = IMG(**self.augmentation)
         vg = IMG(rescale = 1.0/255.)
 
         train_gen = tg.flow_from_directory(
