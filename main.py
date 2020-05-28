@@ -22,12 +22,14 @@ def cats_dogs_case(save=None):
     
     cnn = BaseConvolutionalNetwork(input_shape)
     cnn.set_data_dir(train_dir, validation_dir)
-    cnn.add_convolution([16,32,64], (3,3)*3)
-    cnn.set_augmentations(basic_augmentation)
+    cnn.add_convolution([16,32,64], [(3,3)]*3)
+    # cnn.set_augmentations(basic_augmentation)
     cnn.set_hidden_layers([512])
     cnn.set_output_layer(1)
     cnn.show_summary()
     cnn.train(save)
+
+        
 
 if __name__ == '__main__':
     cats_dogs_case('catdog_model')

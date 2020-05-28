@@ -3,7 +3,7 @@ import tensorflow as tf
 class BaseConvolutionalNetwork(object):
     hyperparam = {
         'batch_size'    : 20, 
-        'epoch'         : 15,
+        'epoch'         : 100,
         'steps'         : 100,
         'val_steps'     : 50,
         'learning_rate' : 0.001            
@@ -75,13 +75,13 @@ class BaseConvolutionalNetwork(object):
             self.model.reset_metrics()
         else:
             print('Load failed. Unknown mode')
-        
+
     def create_new(self):
         self.model = tf.keras.models.Sequential()        
-            
+
     def set_data_dir(self, train_dir, val_dir):
         self.data_dir = {'train': train_dir, 'validation': val_dir}        
-            
+    
     def add_convolution(self, filter_num, kernels_size, 
                         pooling = (2,2), activation = 'relu', 
                         dropout = 0, first = True):
@@ -99,11 +99,17 @@ class BaseConvolutionalNetwork(object):
         
     def set_hidden_layers(self, neurons_list, activation='relu'):
         for num in neurons_list:
-            self.model.add(tf.keras.layers.Dense(num, activation=activation))
+            hidden = tf.keras.layers.Dense(num, activation=activation)
+            self.model.add(hidden)
 
     def set_output_layer(self, out_neurons, activation='sigmoid'):
-        self.model.add(tf.keras.layers.Dense(out_neurons, activation=activation))
-        
+        if self.mode == 'binary':
+            activation = 'sigmoid'
+        elif self.mode == 'categorical':
+            activation = 'softmax'
+        output = tf.keras.layers.Dense(out_neurons, activation=activation)
+        self.model.add(output)
+
     def set_parameter(self, param, value):
         self.hyperparam[param] = value
 
@@ -116,7 +122,8 @@ class BaseConvolutionalNetwork(object):
 
     def flow_from_directory(self):
         IMG = tf.keras.preprocessing.image.ImageDataGenerator
-        tg = IMG(**self.augmentation)
+        # tg = IMG(**self.augmentation)
+        tg = IMG(rescale = 1.0/255.)
         vg = IMG(rescale = 1.0/255.)
 
         train_gen = tg.flow_from_directory(
@@ -129,28 +136,30 @@ class BaseConvolutionalNetwork(object):
             self.data_dir['validation'],
             batch_size = self.hyperparam['batch_size'],
             class_mode = self.mode,
-            target_size = (150, 150)
+            target_size = self.input_shape
         )
         return train_gen, validation_gen
+
+    def set_callbacks(self, checkpoint):
+        callbacks = []
+
+        CB = tf.keras.callbacks
+        impatient = CB.EarlyStopping(monitor='accuracy', patience=3)
+        callbacks.append(impatient)
+        if checkpoint:
+            path = "saved\\"+checkpoint
+            checkpoint_save = CB.ModelCheckpoint(filepath=path)
+            callbacks.append(checkpoint_save)
+        return callbacks
 
     def train(self, checkpoint=None):
         p = self.hyperparam
         train_generator, validation_generator = self.flow_from_directory()
         opt = tf.keras.optimizers.RMSprop(lr=p['learning_rate'])
-        loss = 'binary_crossentropy' if self.mode=='binary' else 'categorical_crossentropy'
+        loss = self.mode + '_crossentropy'
 
         self.model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
-
-        if checkpoint:
-            checkpoint_path = "saved\\"+checkpoint
-            checkpoint_save = tf.keras.callbacks.ModelCheckpoint(
-                filepath = checkpoint_path,
-                verbose = 1
-            )
-            callbacks = [checkpoint_save]
-        else:
-            callbacks = None
-        
+        callbacks = self.set_callbacks(checkpoint)
         history = self.model.fit(
             train_generator,
             validation_data = validation_generator,
@@ -161,3 +170,34 @@ class BaseConvolutionalNetwork(object):
             callbacks = callbacks
         )
         return history
+    
+    def check_performance(self, paths=[]):
+        # predicting images
+        
+        img = image.load_img(path, target_size=(150, 150))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+
+        images = np.vstack([x])
+        classes = model.predict(images, batch_size=10)
+        print(fn)
+        print(classes)        
+        
+     
+#   # predicting images
+#   path='/content/' + fn
+#   img=image.load_img(path, target_size=(150, 150))
+  
+#   x=image.img_to_array(img)
+#   x=np.expand_dims(x, axis=0)
+#   images = np.vstack([x])
+  
+#   classes = model.predict(images, batch_size=10)
+  
+#   print(classes[0])
+  
+#   if classes[0]>0:
+#     print(fn + " is a dog")
+    
+#   else:
+#     print(fn + " is a cat")
