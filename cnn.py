@@ -1,6 +1,16 @@
 import tensorflow as tf
+import numpy as np
+import os
 
 class BaseConvolutionalNetwork(object):
+    callbacks_list = [
+        'no_progresss_stopping', 
+        'save_per_epoch', 
+        'log_to_csv', 
+        'good_result_stopping'
+    ]    
+    
+    # Default Hyperparameter
     hyperparam = {
         'batch_size'    : 20, 
         'epoch'         : 100,
@@ -9,6 +19,7 @@ class BaseConvolutionalNetwork(object):
         'learning_rate' : 0.001            
     }
     
+    # Default Augmentation
     augmentation = {
         'featurewise_center'              : False, 
         'samplewise_center'               : False,
@@ -34,13 +45,19 @@ class BaseConvolutionalNetwork(object):
         'dtype'                           : None        
     }
     
-    def __init__(self, input_, load=False, mode='binary'):
+    def __init__(self, name_dir, input_, load=False, mode='binary'):
         if not load:
             self.create_new()
         else:
             self.load(load)
         self.input_shape = input_
         self.mode = mode
+        self.name = name_dir
+        base_dir = os.path.join(os.getcwd(), 'data', name_dir)        
+        train_dir = base_dir+'\\tobeused\\train'
+        val_dir = base_dir+'\\tobeused\\validation'
+        self.data_dir = {'train': train_dir, 'validation': val_dir}        
+
             
     def show_summary(self):
         self.model.summary()
@@ -78,9 +95,6 @@ class BaseConvolutionalNetwork(object):
 
     def create_new(self):
         self.model = tf.keras.models.Sequential()        
-
-    def set_data_dir(self, train_dir, val_dir):
-        self.data_dir = {'train': train_dir, 'validation': val_dir}        
     
     def add_convolution(self, filter_num, kernels_size, 
                         pooling = (2,2), activation = 'relu', 
@@ -140,26 +154,49 @@ class BaseConvolutionalNetwork(object):
         )
         return train_gen, validation_gen
 
-    def set_callbacks(self, checkpoint):
+    def set_callbacks(self, cb_list):
         callbacks = []
-
         CB = tf.keras.callbacks
-        impatient = CB.EarlyStopping(monitor='accuracy', patience=3)
-        callbacks.append(impatient)
-        if checkpoint:
-            path = "saved\\"+checkpoint
-            checkpoint_save = CB.ModelCheckpoint(filepath=path)
+
+        # no progress stopping callback
+        if 'no_progress_stopping' in cb_list:
+            impatient = CB.EarlyStopping(monitor='accuracy', patience=3)
+            callbacks.append(impatient)
+
+        # save per epoch callback
+        if 'save_per_epoch' in cb_list:
+            checkpoint_save = CB.ModelCheckpoint(
+                filepath="saved\\"+self.name, 
+                save_best_only=True)
             callbacks.append(checkpoint_save)
+
+        # log to csv file callback
+        if 'log_to_csv' in cb_list:
+            logger = CB.CSVLogger('log\\'+self.name)
+            callbacks.append(logger)
+
+        # stop when enough callback
+        if 'good_result_stopping' in cb_list:
+            def stopper(epoch, logs):
+                if logs['accuracy']>0.97: self.model.stop_training = True
+            good_res = CB.LambdaCallback(on_epoch_end=lambda e,l: stopper(e,l))
+            callbacks.append(good_res)
+                            
         return callbacks
 
-    def train(self, checkpoint=None):
+    def train(self, save=False):
         p = self.hyperparam
         train_generator, validation_generator = self.flow_from_directory()
         opt = tf.keras.optimizers.RMSprop(lr=p['learning_rate'])
         loss = self.mode + '_crossentropy'
 
         self.model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
-        callbacks = self.set_callbacks(checkpoint)
+
+        cb_list = self.callbacks_list.copy()
+        if not save:
+            cb_list.remove('save_per_epoch')
+        callbacks = self.set_callbacks(cb_list)
+        
         history = self.model.fit(
             train_generator,
             validation_data = validation_generator,
@@ -170,34 +207,4 @@ class BaseConvolutionalNetwork(object):
             callbacks = callbacks
         )
         return history
-    
-    def check_performance(self, paths=[]):
-        # predicting images
-        
-        img = image.load_img(path, target_size=(150, 150))
-        x = image.img_to_array(img)
-        x = np.expand_dims(x, axis=0)
-
-        images = np.vstack([x])
-        classes = model.predict(images, batch_size=10)
-        print(fn)
-        print(classes)        
-        
      
-#   # predicting images
-#   path='/content/' + fn
-#   img=image.load_img(path, target_size=(150, 150))
-  
-#   x=image.img_to_array(img)
-#   x=np.expand_dims(x, axis=0)
-#   images = np.vstack([x])
-  
-#   classes = model.predict(images, batch_size=10)
-  
-#   print(classes[0])
-  
-#   if classes[0]>0:
-#     print(fn + " is a dog")
-    
-#   else:
-#     print(fn + " is a cat")
