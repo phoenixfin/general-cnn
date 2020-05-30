@@ -1,6 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import os
+import os, random, logging
+from helper.report import plot_accuracy
+
+logger = tf.get_logger()
+logger.setLevel(logging.ERROR)
 
 class BaseConvolutionalNetwork(object):
     callbacks_list = [
@@ -45,7 +49,7 @@ class BaseConvolutionalNetwork(object):
         'dtype'                           : None        
     }
     
-    def __init__(self, name_dir, input_, load=False, mode='binary'):
+    def __init__(self, name_dir='', input_=(), load=False, mode='binary'):
         if not load:
             self.create_new()
         else:
@@ -57,20 +61,13 @@ class BaseConvolutionalNetwork(object):
         train_dir = base_dir+'\\tobeused\\train'
         val_dir = base_dir+'\\tobeused\\validation'
         self.data_dir = {'train': train_dir, 'validation': val_dir}        
-
             
     def show_summary(self):
         self.model.summary()
 
-    def load(self, filename, obj='model'):
+    def load(self,obj='model'):
         if obj=='model':
-            self.model = tf.keras.models.load_model(filename)
-        elif obj=='weights_only':
-            self.model.load_weights(filename)
-
-    def load(self, filename, obj='model'):
-        if obj=='model':
-            self.model = tf.keras.models.load_model(filename)
+            self.model = tf.keras.models.load_model('saved\\'+self.name)
         elif obj=='weights_only':
             self.model.load_weights(filename)
         else:
@@ -186,17 +183,20 @@ class BaseConvolutionalNetwork(object):
 
     def train(self, save=False):
         p = self.hyperparam
-        train_generator, validation_generator = self.flow_from_directory()
+        
+        # Compile the model
         opt = tf.keras.optimizers.RMSprop(lr=p['learning_rate'])
         loss = self.mode + '_crossentropy'
-
         self.model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
 
+        # Set some callbacks
         cb_list = self.callbacks_list.copy()
         if not save:
             cb_list.remove('save_per_epoch')
         callbacks = self.set_callbacks(cb_list)
-        
+
+        # Fitting the data!
+        train_generator, validation_generator = self.flow_from_directory()        
         history = self.model.fit(
             train_generator,
             validation_data = validation_generator,
@@ -208,3 +208,22 @@ class BaseConvolutionalNetwork(object):
         )
         return history
      
+    def predict(self, num):
+        IM = tf.keras.preprocessing.image
+
+        path = os.path.join(os.getcwd(), 'data', self.name, 'test') 
+        test_data = os.listdir(path)
+        randomized = random.sample(test_data, num)
+
+        for file in randomized:
+            img = IM.load_img(path+'\\'+file, target_size = self.input_shape)
+
+            x = IM.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
+            images = np.vstack([x])
+            res = self.model.predict(images, batch_size=10)
+
+            print(file, ': ',res[0])
+            
+    def report(self, history):
+        plot_accuracy(history)
