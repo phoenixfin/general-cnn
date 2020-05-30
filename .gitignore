@@ -2,3 +2,4 @@ data/
 *.code-workspace
 *.pyc
 tempCodeRunnerFile.python
+saved/
