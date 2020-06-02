@@ -43,7 +43,23 @@ def rock_paper_scissor_case(save=False):
     cnn.train(save)
         
 
+def plant_disease_case(save=False):
+    input_shape = (300,300)
+    
+    cnn = BaseConvolutionalNetwork('plant-diseases', input_shape, mode='categorical')
+    cnn.add_convolution([64,64,128,128], [(3,3)]*4, dropout=0.5)
+    cnn.set_augmentations(basic_augmentation)
+    cnn.set_hidden_layers([512])
+    cnn.set_output_layer()
+    cnn.train(save)
+        
+
 if __name__ == '__main__':
     # cats_dogs_case(save=True)
     # human_horse_case(save=True)
-    rock_paper_scissor_case(save = True)
+    # plant_disease_case(save = True)
+    
+    cnn = BaseConvolutionalNetwork('plant-diseases', (300,300), mode='categorical')
+    cnn.load()
+    cnn.load('weights_only')
+    cnn.predict(20)
