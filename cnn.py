@@ -57,19 +57,17 @@ class BaseConvolutionalNetwork(object):
         self.input_shape = input_
         self.mode = mode
         self.name = name_dir
-        base_dir = os.path.join(os.getcwd(), 'data', name_dir)        
-        train_dir = base_dir+'\\tobeused\\train'
-        val_dir = base_dir+'\\tobeused\\validation'
-        self.data_dir = {'train': train_dir, 'validation': val_dir}        
+        self.obtain_image_data()
             
     def show_summary(self):
         self.model.summary()
 
     def load(self,obj='model'):
+        file = 'saved\\'+self.name
         if obj=='model':
-            self.model = tf.keras.models.load_model('saved\\'+self.name)
+            self.model = tf.keras.models.load_model(file)
         elif obj=='weights_only':
-            self.model.load_weights(filename)
+            self.model.load_weights(file+'\\variables\\')
         else:
             print('Load failed. Unknown mode')
 
@@ -113,11 +111,12 @@ class BaseConvolutionalNetwork(object):
             hidden = tf.keras.layers.Dense(num, activation=activation)
             self.model.add(hidden)
 
-    def set_output_layer(self, out_neurons, activation='sigmoid'):
+    def set_output_layer(self, activation='sigmoid'):
         if self.mode == 'binary':
             activation = 'sigmoid'
         elif self.mode == 'categorical':
             activation = 'softmax'
+        out_neurons = self.image_data['train'].num_classes
         output = tf.keras.layers.Dense(out_neurons, activation=activation)
         self.model.add(output)
 
@@ -131,25 +130,29 @@ class BaseConvolutionalNetwork(object):
         for key in aug_dict:
             self.set_augmentation(key, aug_dict[key])
 
-    def flow_from_directory(self):
+    def obtain_image_data(self):
+        base_dir = os.path.join(os.getcwd(), 'data', self.name)
+        train_dir = base_dir+'\\tobeused\\train'
+        val_dir = base_dir+'\\tobeused\\validation'
+                
         IMG = tf.keras.preprocessing.image.ImageDataGenerator
         # tg = IMG(**self.augmentation)
         tg = IMG(rescale = 1.0/255.)
         vg = IMG(rescale = 1.0/255.)
 
-        train_gen = tg.flow_from_directory(
-            self.data_dir['train'],
+        train_data = tg.flow_from_directory(
+            train_dir,
             batch_size = self.hyperparam['batch_size'],
             class_mode = self.mode,
             target_size = self.input_shape
         )
-        validation_gen =  vg.flow_from_directory(
-            self.data_dir['validation'],
+        validation_data =  vg.flow_from_directory(
+            val_dir,
             batch_size = self.hyperparam['batch_size'],
             class_mode = self.mode,
             target_size = self.input_shape
         )
-        return train_gen, validation_gen
+        self.image_data = {'train':train_data, 'val':validation_data}
 
     def set_callbacks(self, cb_list):
         callbacks = []
@@ -196,10 +199,9 @@ class BaseConvolutionalNetwork(object):
         callbacks = self.set_callbacks(cb_list)
 
         # Fitting the data!
-        train_generator, validation_generator = self.flow_from_directory()        
         history = self.model.fit(
-            train_generator,
-            validation_data = validation_generator,
+            self.image_data['train'],
+            validation_data = self.image_data['val'],
             steps_per_epoch = p['steps'],
             epochs = p['epoch'],
             validation_steps = p['val_steps'],
@@ -211,7 +213,9 @@ class BaseConvolutionalNetwork(object):
     def predict(self, num):
         IM = tf.keras.preprocessing.image
 
-        path = os.path.join(os.getcwd(), 'data', self.name, 'test') 
+        data_dir = os.path.join(os.getcwd(), 'data', self.name)
+        category = os.listdir(data_dir+'\\tobeused\\train')
+        path = os.path.join(data_dir+'\\test') 
         test_data = os.listdir(path)
         randomized = random.sample(test_data, num)
 
@@ -223,7 +227,7 @@ class BaseConvolutionalNetwork(object):
             images = np.vstack([x])
             res = self.model.predict(images, batch_size=10)
 
-            print(file, ': ',res[0])
-            
+            print(file, ': ',category[np.argmax(res[0])])
+
     def report(self, history):
         plot_accuracy(history)
