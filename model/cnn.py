@@ -1,10 +1,10 @@
+
+
 import tensorflow as tf
 import numpy as np
-import os, random, logging
+import os, random
 from helper.report import plot_accuracy
-
-logger = tf.get_logger()
-logger.setLevel(logging.ERROR)
+from helper import constants
 
 class BaseConvolutionalNetwork(object):
     callbacks_list = [
@@ -13,57 +13,21 @@ class BaseConvolutionalNetwork(object):
         'log_to_csv', 
         'good_result_stopping'
     ]    
-    
-    # Default Hyperparameter
-    hyperparam = {
-        'batch_size'    : 32, 
-        'epochs'        : 50,
-        'learning_rate' : 0.001,
-        'input_size'    : 300,    
-        'steps'         : 100,
-        'val_steps'     : 50
-    }
-    
-    # Default Augmentation
-    augmentation = {
-        'featurewise_center'              : False, 
-        'samplewise_center'               : False,
-        'featurewise_std_normalization'   : False, 
-        'samplewise_std_normalization'    : False,
-        'zca_whitening'                   : False, 
-        'zca_epsilon'                     : 1e-06, 
-        'rotation_range'                  : 0, 
-        'width_shift_range'               : 0.0,
-        'height_shift_range'              : 0.0, 
-        'brightness_range'                : None, 
-        'shear_range'                     : 0.0, 
-        'zoom_range'                      : 0.0,
-        'channel_shift_range'             : 0.0, 
-        'fill_mode'                       : 'nearest', 
-        'cval'                            : 0.0, 
-        'horizontal_flip'                 : False,
-        'vertical_flip'                   : False, 
-        'rescale'                         : None, 
-        'preprocessing_function'          : None,
-        'data_format'                     : None, 
-        'validation_split'                : 0.0, 
-        'dtype'                           : None        
-    }
-    
-    def __init__(self, name_dir, save_file='', load=False):
-        if not load:
-            self.create_new()
-        else:
-            self.load(load)
+            
+    def __init__(self, name_dir, save_file=''):
+        self.model = None
         self.name = name_dir
-        self.obtain_image_data()
+        self.hyperparam = constants.hyperparameter
+        self.augmentation = constants.augmentation
+        self._obtain_image_data()
         self.save = save_file if save_file else name_dir
             
     def show_summary(self):
         self.model.summary()
 
-    def load(self,obj='model'):
-        file = 'saved\\'+self.name
+    def load(self,obj='model',path=None):
+        if path == None: path = self.save
+        file = 'saved\\'+path
         if obj=='model':
             self.model = tf.keras.models.load_model(file)
         elif obj=='weights_only':
@@ -88,62 +52,21 @@ class BaseConvolutionalNetwork(object):
         else:
             print('Load failed. Unknown mode')
 
-    def create_new(self):
-        self.model = tf.keras.models.Sequential()        
+    def add_convolution(self, **kwargs):
+        self._add_convolution(**kwargs)
     
-    def add_convolution(self, filter_num, kernels_size, 
-                        pooling = (2,2), activation = 'relu', 
-                        dropout = 0, normalize = False, first = True):
-        kwargs = {'activation':activation}
-        in_ = self.hyperparam['input_size']
-        for i, num in enumerate(filter_num):
-            kwargs['filters'] = num
-            kwargs['kernel_size'] = kernels_size[i]
-            if first and i==0: 
-                kwargs['input_shape']= (in_, in_, 3)
-
-            self.model.add(tf.keras.layers.Conv2D(**kwargs))
-
-            if pooling: 
-                self.model.add(tf.keras.layers.MaxPooling2D(*pooling))
-            if normalize:
-                self.model.add(tf.keras.layers.BatchNormalization())
-
-        if dropout:
-            self.model.add(tf.keras.layers.Dropout(dropout))
-
-        self.model.add(tf.keras.layers.Flatten())
+    def add_hidden_layers(self, **kwargs):
+        self._add_hidden_layers(**kwargs)
         
-    def set_hidden_layers(self, neurons_list, dropout = 0, 
-                          normalize = False, activation='relu'):
-        for num in neurons_list:
-            hidden = tf.keras.layers.Dense(num, activation=activation)           
-            self.model.add(hidden)
-            if dropout:
-                self.model.add(tf.keras.layers.Dropout(dropout))
-            if normalize:
-                self.model.add(tf.keras.layers.BatchNormalization())
-                
     def set_output_layer(self):
         if self.mode == 'binary':
             activation = 'sigmoid'
         elif self.mode == 'categorical':
             activation = 'softmax'
-        out_neurons = self.image_data['train'].num_classes
-        output = tf.keras.layers.Dense(out_neurons, activation=activation)
-        self.model.add(output)
+        out_neurons = self.image_data['train'].num_classes        
+        self._set_output_layer(out_neurons, activation)
 
-    def set_parameter(self, param, value):
-        self.hyperparam[param] = value
-
-    def set_augmentation(self, param, value):
-        self.augmentation[param] = value
-        
-    def set_augmentations(self, aug_dict):
-        for key in aug_dict:
-            self.set_augmentation(key, aug_dict[key])
-
-    def obtain_image_data(self):
+    def _obtain_image_data(self):
         base_dir = os.path.join(os.getcwd(), 'data', self.name)
         train_dir = base_dir+'\\tobeused\\train'
         val_dir = base_dir+'\\tobeused\\validation'
@@ -151,7 +74,12 @@ class BaseConvolutionalNetwork(object):
         IMG = tf.keras.preprocessing.image.ImageDataGenerator
         
         # tg = IMG(**self.augmentation)
-        tg = IMG(rescale = 1./255)
+        tg = IMG(rescale = 1./255,
+                 zoom_range=0.2, 
+                 horizontal_flip=True,
+                 width_shift_range=0.2,
+                 height_shift_range=0.2,
+                 shear_range=0.2)
         vg = IMG(rescale = 1./255)
 
         in_ = self.hyperparam['input_size']
@@ -178,19 +106,22 @@ class BaseConvolutionalNetwork(object):
 
         # no progress stopping callback
         if 'no_progress_stopping' in cb_list:
-            impatient = CB.EarlyStopping(monitor='val_accuracy', patience=3)
+            impatient = CB.EarlyStopping(
+                monitor='val_accuracy',
+                min_delta = 0.05, 
+                patience=3)
             callbacks.append(impatient)
 
         # save per epoch callback
         if 'save_per_epoch' in cb_list:
             checkpoint_save = CB.ModelCheckpoint(
-                filepath="saved\\"+self.name, 
+                filepath="saved\\"+self.save, 
                 save_best_only=True)
             callbacks.append(checkpoint_save)
 
         # log to csv file callback
         if 'log_to_csv' in cb_list:
-            logger = CB.CSVLogger('log\\'+self.name)
+            logger = CB.CSVLogger('log\\'+self.save)
             callbacks.append(logger)
 
         # stop when enough callback
