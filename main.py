@@ -1,18 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from cnn import BaseConvolutionalNetwork
 import os
-data_dir = os.getcwd()+'\\data'
-
-basic_augmentation = {
-    'rescale'             : 1./255,
-    'rotation_range'      : 40,
-    'width_shift_range'   : 0.2,
-    'height_shift_range'  : 0.2,
-    'shear_range'         : 0.2,
-    'zoom_range'          : 0.2,
-    'horizontal_flip'     : True,
-}
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from model import TransferNetwork, SelfDefinedNetwork
 
 def cats_dogs_case(save=False):
     input_shape = (150,150)
@@ -44,20 +33,30 @@ def rock_paper_scissor_case(save=False):
         
 
 def plant_disease_case(save=False):
-    cnn = BaseConvolutionalNetwork('plant-diseases')
+    cnn = SelfDefinedNetwork('plant-diseases')
     cnn.add_convolution([64,64,128,128], [(3,3)]*4, dropout=0.5)
     cnn.set_augmentations(basic_augmentation)
     cnn.set_hidden_layers([512], dropout=0.2)
     cnn.set_output_layer()
     cnn.train(save)
         
-
+def plant_disease_pretrained(save=False):
+    cnn = TransferNetwork('plant-diseases','plant-diseases-densenet-with-aug2')
+    # cnn.set_pretrained_model('DenseNet201', lastpool='avg', fine_tune_at=650)
+    # cnn.add_hidden_layers(neurons_list=[512, 512], dropout=0.2)
+    # cnn.set_output_layer()
+    cnn.load(path='plant-diseases-densenet-with-aug')
+    # cnn.show_summary()
+    cnn.train(save=True)
+        
 if __name__ == '__main__':
     # cats_dogs_case(save=True)
     # human_horse_case(save=True)
-    plant_disease_case(save = True)
+    plant_disease_pretrained(save = True)
     
+    # cnn = TransferNetwork('plant-diseases','plant-diseases-mobilenet-with-aug')    
     # cnn = BaseConvolutionalNetwork('plant-diseases', (300,300), mode='categorical')
     # cnn.load()
     # cnn.train(save=True)
     # cnn.predict(20)
+    
