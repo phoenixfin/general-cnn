@@ -1,10 +1,14 @@
-
-
 import tensorflow as tf
 import numpy as np
 import os, random
 from helper.report import plot_accuracy
 from helper import constants
+
+labels_path = tf.keras.utils.get_file(
+    'ImageNetLabels.txt',
+    'https://storage.googleapis.com/download.tensorflow.org/data/ImageNetLabels.txt')
+
+imagenet_labels = np.array(open(labels_path).read().splitlines())        
 
 class BaseConvolutionalNetwork(object):
     callbacks_list = [
@@ -157,6 +161,25 @@ class BaseConvolutionalNetwork(object):
         )
         return history
      
+    def predict_imagenet(self, num):
+        IM = tf.keras.preprocessing.image
+
+        data_dir = os.path.join(os.getcwd(), 'data', self.name)
+        category = imagenet_labels
+        path = os.path.join(data_dir+'\\test') 
+        test_data = random.sample(os.listdir(path), num)
+        size = self.hyperparam['input_size']
+        
+        for file in test_data:
+            img = IM.load_img(path+'/'+file, target_size=[224, 224])
+            x = IM.img_to_array(img)
+            x = tf.keras.applications.mobilenet.preprocess_input(
+                x[tf.newaxis,...])
+            res = self.premodel(x)
+
+            decoded = imagenet_labels[np.argsort(res)[0,::-1][:10]+1]
+            print(file, ': ', decoded)        
+        
     def predict(self, num):
         IM = tf.keras.preprocessing.image
 
@@ -168,8 +191,8 @@ class BaseConvolutionalNetwork(object):
         
         for file in test_data:
             img = IM.load_img(path+'\\'+file, target_size = (size, size))
-            img_array = IM.img_to_array(img_array)
-            normalized = np.expand_dims(img, axis=0)/255
+            img_array = IM.img_to_array(img)
+            normalized = np.expand_dims(img_array, axis=0)/255
             
             res = self.model.predict(normalized, batch_size=10)
             print(file, ': ',category[np.argmax(res[0])])

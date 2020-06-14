@@ -7,10 +7,11 @@ class TransferNetwork(BaseConvolutionalNetwork):
         super().__init__(name_dir, save_file)
 
     def set_pretrained_model(self, model_name='InceptionV3', 
-                             lastpool='avg', fine_tune_at=None):
+                             lastpool='avg', fine_tune_at=None,
+                             feature_only=True):
         size = self.hyperparam['input_size']
         self.premodel = getattr(tf.keras.applications, model_name)(
-            include_top=False, 
+            include_top=not feature_only, 
             input_shape=(size, size, 3),
             pooling=lastpool, 
         )

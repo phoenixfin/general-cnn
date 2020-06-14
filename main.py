@@ -42,12 +42,13 @@ def plant_disease_case(save=False):
         
 def plant_disease_pretrained(save=False):
     cnn = TransferNetwork('plant-diseases','plant-diseases-densenet-with-aug2')
-    # cnn.set_pretrained_model('DenseNet201', lastpool='avg', fine_tune_at=650)
+    cnn.set_pretrained_model('DenseNet201', feature_only=False)
+    cnn.predict_imagenet(10)
     # cnn.add_hidden_layers(neurons_list=[512, 512], dropout=0.2)
     # cnn.set_output_layer()
-    cnn.load(path='plant-diseases-densenet-with-aug')
+    # cnn.load(path='plant-diseases-densenet-with-aug')
     # cnn.show_summary()
-    cnn.train(save=True)
+    # cnn.train(save=True)
         
 if __name__ == '__main__':
     # cats_dogs_case(save=True)
