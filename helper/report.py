@@ -1,10 +1,11 @@
 from matplotlib import pyplot as plt
-
-def plot_accuracy(history):
-    acc      = history.history['accuracy']
-    val_acc  = history.history['val_accuracy']
-    loss     = history.history['loss']
-    val_loss = history.history['val_loss']
+import pandas as pd
+    
+def _plot_accuracy(data):
+    acc      = data['accuracy']
+    val_acc  = data['val_accuracy']
+    loss     = data['loss']
+    val_loss = data['val_loss']
 
     epochs   = range(len(acc)) # Get number of epochs
 
@@ -20,3 +21,9 @@ def plot_accuracy(history):
     plt.legend()
 
     plt.show()
+
+def plot_from_history(history):
+    _plot_accuracy(history.history)
+    
+def plot_from_log(log):
+    _plot_accuracy(pd.read_csv(log))

@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os, random
-from helper.report import plot_accuracy
+from helper.report import plot_from_history
 from helper import constants
 
 labels_path = tf.keras.utils.get_file(
@@ -198,4 +198,4 @@ class BaseConvolutionalNetwork(object):
             print(file, ': ',category[np.argmax(res[0])])
 
     def report(self, history):
-        plot_accuracy(history)
+        plot_from_history(history)

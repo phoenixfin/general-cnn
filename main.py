@@ -48,16 +48,18 @@ def plant_disease_pretrained(save=False):
     # cnn.set_output_layer()
     # cnn.load(path='plant-diseases-densenet-with-aug')
     # cnn.show_summary()
-    # cnn.train(save=True)
         
 if __name__ == '__main__':
     # cats_dogs_case(save=True)
     # human_horse_case(save=True)
-    plant_disease_pretrained(save = True)
+    # plant_disease_pretrained(save = True)
     
     # cnn = TransferNetwork('plant-diseases','plant-diseases-mobilenet-with-aug')    
     # cnn = BaseConvolutionalNetwork('plant-diseases', (300,300), mode='categorical')
     # cnn.load()
     # cnn.train(save=True)
     # cnn.predict(20)
+    
+    from helper.report import plot_from_log
+    plot_from_log('log/plant-diseases-densenetgit')
     
