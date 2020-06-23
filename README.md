@@ -10,7 +10,7 @@ Some Jupyter notebooks with specific case (plant disease dataset) are also creat
 
 ## Getting started
 
-To use the framework directly using notebooks
+### To use the framework directly using notebooks
 
 1. Open the [notebook](https://github.com/phoenixfin/general-cnn/tree/master/notebook) directory in this repository
 
@@ -22,13 +22,7 @@ To use the framework directly using notebooks
 
 5. Enjoy!
 
-3. [Install tensorflow_model_server](https://www.tensorflow.org/tfx/serving/setup)
-4. Run the model exposing a port
-   ```
-   tensorflow_model_server --model_base_path=<path_to_directory> --rest_api_port=5001 --model_name=PlantCNN
-   ```
-
-To run the frameworks locally
+### To run the frameworks locally
 
 1. Clone this repo
 
