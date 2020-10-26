@@ -1,10 +1,10 @@
 hyperparameter = {
-    'batch_size'    : 32, 
-    'epochs'        : 5,
-    'learning_rate' : 0.01,
-    'input_size'    : 224,    
-    'steps'         : 100,
-    'val_steps'     : 50
+    'batch_size': 32,
+    'epochs': 5,
+    'learning_rate': 0.01,
+    'input_size': 224,
+    'steps': 100,
+    'val_steps': 50
 }
 
 """ Default Augmentation
@@ -33,14 +33,14 @@ hyperparameter = {
 """
 
 augmentation = {
-    'rescale'             : 1./255,
+    'rescale': 1./255,
     # 'rotation_range'      : 10,
     # 'width_shift_range'   : 0.2,
     # 'height_shift_range'  : 0.2,
     # 'shear_range'         : 0.2,
     # 'zoom_range'          : 0.2,
     # 'horizontal_flip'     : True,
-}    
+}
 
 pretrained_lst = [
     'DenseNet121',
